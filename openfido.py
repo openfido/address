@@ -1,37 +1,60 @@
-"""GridLAB-D Geodata Address Resolution Package
+"""Address resolution pipeline
 
-The address package resolves addresses and locations.
+The address resolution pipeline resolves addresses and locations.
 
-EXAMPLES:
+CONFIG
+------
 
-The following example converts an address to a latitude,longitude:
+The following parameters are recognized in `config.csv`:
 
-    >>> import geodata_address
-    >>> geodata_address.apply(DataFrame({"address":["2575 Sand Hill Rd., Menlo Park, CA"],}))
-                                  address   longitude   latitude
-    0  2575 Sand Hill Rd., Menlo Park, CA -122.201176  37.415463
+* DATA: The CSV data file name contain address or location (required)
 
-The following example converts a latitude,longitude to an address:
+* REVERSE: Boolean value indicating whether the data contains locations
+  (False, default) or addresses (True)
 
-    >>> import geodata_address
-    >>> geodata_address.apply(DataFrame({"latitude":[37.4205],"longitude":[-122.2046]}),{"reverse":"True"})
-       latitude  longitude                                            address
-    0   37.4205  -122.2046  Stanford Linear Accelerator Center National Ac...
+* PROVIDER: Resolver provider (default is "nominatim")
 
-SCRIPT
+* USER_AGENT: Resolver user agent (default is "csv_user_ht")
 
-The package may be run as a script using the following command options
+* TIMEOUT: Resolver timeout in seconds (default is 5)
 
-    unittest    Performs the unit tests of the implementation
+* RETRIES: Resolver retry limit (default is 5)
 
-    makeconfig  Updates the package default configuration file
+* SLEEP: Resolver sleep between retries in seconds (default 1)
+
+INPUT
+-----
+
+The format of the input depends on the value of REVERSE in config.csv.
+
+* REVERSE=False
+
+The CSV file must include a *latitude* and *longitude* column.
+
+* REVERSE=True
+
+The CSV file must include an *address* column.
+
+OUTPUT
+------
+
+The format of the output depends on the value of REVERSE in config.csv.
+
+* REVERSE=False
+
+The CSV file will include an *address* column.
+
+* REVERSE=True
+
+The CSV file will include a *latitude* and *longitude* column.
+
 """
 
 version = 1 # specify API version
 
-import sys
-import json
-from pandas import DataFrame, Series
+import sys, os
+import json, csv
+import pandas as pd
 from shapely.geometry import Point
 from geopandas.tools import geocode, reverse_geocode
 
@@ -136,32 +159,54 @@ def apply(data, options=default_options, config=default_config, warning=print):
             time.sleep(config["sleep"])
         if type(addr) is Exception:
             raise addr
-        data["address"] = Series(addr["address"],dtype="string").tolist()
+        data["address"] = pd.Series(addr["address"],dtype="string").tolist()
         return data
 
-#
-# Perform validation tests
-#
-if __name__ == '__main__':
+try:
 
-    import unittest
+    DATA = None
+    CONFIG = default_config
+    OPTIONS = default_options
+    OPENFIDO_INPUT = os.getenv("OPENFIDO_INPUT")
+    OPENFIDO_OUTPUT = os.getenv("OPENFIDO_OUTPUT")
+    warnings = []
+    with open(f"{OPENFIDO_INPUT}/config.csv","r") as cfg:
+        reader = csv.reader(cfg)
+        def cast(x,astype):
+            if astype is bool:
+                try:
+                    return int(x)
+                except:
+                    if x.lower() in ("yes","true","no","false"):
+                        return x.lower() in ("yes","true")
+                    raise
+            else:
+                return astype(x)
+        for row in reader:
+            row0 = row[0].lower()
+            if row0 == "data":
+                DATA = pd.read_csv(f"{OPENFIDO_INPUT}/{row[1]}")
+            elif row0 in CONFIG.keys():
+                print("CONFIG",CONFIG)
+                if len(row) == 1:
+                    CONFIG[row0] = True
+                else:
+                    CONFIG[row0] = cast(row[1],type(CONFIG[row0]))
+            elif row0 in OPTIONS.keys():
+                if len(row) == 1:
+                    OPTIONS[row0] = True
+                else:   
+                    OPTIONS[row0] = cast(row[1],type(CONFIG[row0]))
+            else:
+                print(f"WARNING [address]: config.csv parameter {row[0]} is not valid",file=sys.stderr)
+        print("DATA",DATA,file=sys.stderr)
+        print("OPTIONS",OPTIONS,file=sys.stderr)
+        print("CONFIG",CONFIG,file=sys.stderr)
+        result = apply(DATA,OPTIONS,CONFIG,warning=lambda x: warnings.append(x))
+        result.to_csv(f"{OPENFIDO_OUTPUT}/address.csv")
+    exit(0)
 
-    class TestAddress(unittest.TestCase):
+except Exception as err:
 
-        def test_address_reverse(self):
-            test = DataFrame({
-                "address":["The White House"],
-                })
-            result = apply(test,{"reverse":True})
-            self.assertEqual(round(result["latitude"][0],6),38.8977)
-            self.assertEqual(round(result["longitude"][0],6),-77.036553)
-
-        def test_address(self):
-            test = DataFrame({
-                "latitude" : [38.8977],
-                "longitude" : [-77.036553],
-                })
-            result = apply(test)
-            self.assertTrue(result["address"][0],"The White House")
-
-    unittest.main()
+    print(f"ERROR [address]: address resolution failed",file=sys.stderr)
+    raise

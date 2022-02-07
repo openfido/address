@@ -1,0 +1,7 @@
+DATA,data.csv
+REVERSE
+PROVIDER,nominatim
+USER_AGENT,csv_user_ht
+TIMEOUT,5
+RETRIES,5
+SLEEP,1

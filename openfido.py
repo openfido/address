@@ -58,25 +58,88 @@ import pandas as pd
 from shapely.geometry import Point
 from geopandas.tools import geocode, reverse_geocode
 
+NAME = "address" 
+OPENFIDO_INPUT = os.getenv("OPENFIDO_INPUT")
+OPENFIDO_OUTPUT = os.getenv("OPENFIDO_OUTPUT")
+
 #
 # Defaults
 #
-default_options = {
+OPTIONS = {
     "reverse" : False,
 }
 
-default_config = {
+CONFIG = {
     "provider" : "nominatim",
     "user_agent" : "csv_user_ht",
     "timeout" : 5,
     "retries" : 5,
     "sleep" : 1,
+    "verbose" : False,
+    "debug" : False,
+    "warning" : True,
+    "quiet" : False,
 }
+
+#
+# Utilities
+#
+def verbose(msg):
+    if CONFIG["verbose"]:
+        print(f"VERBOSE [{name}]: {msg}", file=sys.stderr)
+
+def error(msg,exception=None):
+    if not CONFIG["quiet"]:
+        print(f"ERROR [{NAME}]: {msg}", file=sys.stderr)
+    if exception:
+        raise exception(msg)
+    elif CONFIG["debug"]:
+        import traceback
+        for line in tracekback.format_stack():
+            print(line.strip(),file=sys.stderr)
+
+def debug(msg):
+    if CONFIG["debug"]:
+        print(f"DEBUG [{name}]: {msg}", file=sys.stderr)
+
+def warning(msg):
+    if CONFIG["warning"]:
+        print(f"WARNING [{name}]: {msg}", file=sys.stderr)
+
+def load_config():
+    with open(f"{OPENFIDO_INPUT}/config.csv","r") as cfg:
+        reader = csv.reader(cfg)
+        def cast(x,astype):
+            if astype is bool:
+                try:
+                    return int(x)
+                except:
+                    if x.lower() in ("yes","true","no","false"):
+                        return x.lower() in ("yes","true")
+                    error(f"'{x}' is not a valid boolean value",Exception)
+            else:
+                return astype(x)
+        for row in reader:
+            row0 = row[0].lower()
+            if row0 == "data":
+                DATA = pd.read_csv(f"{OPENFIDO_INPUT}/{row[1]}")
+            elif row0 in CONFIG.keys():
+                if len(row) == 1:
+                    CONFIG[row0] = True
+                else:
+                    CONFIG[row0] = cast(row[1],type(CONFIG[row0]))
+            elif row0 in OPTIONS.keys():
+                if len(row) == 1:
+                    OPTIONS[row0] = True
+                else:   
+                    OPTIONS[row0] = cast(row[1],type(CONFIG[row0]))
+            else:
+                error(f"config.csv parameter {row[0]} is not valid",Exception)
 
 #
 # Implementation of address package
 #
-def apply(data, options=default_options, config=default_config, warning=print):
+def apply(data, options=OPTIONS, config=CONFIG, warning=warning):
     """Perform conversion between latitude,longitude and address
 
     ARGUMENTS:
@@ -114,7 +177,7 @@ def apply(data, options=default_options, config=default_config, warning=print):
 
         # convert address to lat,lon
         if not "address" in list(data.columns):
-            raise Exception("reserve address resolution requires 'address' field")
+            error("reserve address resolution requires 'address' field",Exception)
         data.reset_index(inplace=True) # index is not meaningful
         for retries in range(config["retries"]):
             try:
@@ -129,7 +192,7 @@ def apply(data, options=default_options, config=default_config, warning=print):
             import time
             time.sleep(config["sleep"])
         if type(pos) is Exception:
-            raise pos
+            error(f"geocoder error ({pos})",Exception)
         data["longitude"] = list(map(lambda p: p.x,pos["geometry"]))
         data["latitude"] = list(map(lambda p: p.y,pos["geometry"]))
         return data
@@ -144,7 +207,7 @@ def apply(data, options=default_options, config=default_config, warning=print):
         except:
             pos = None
         if type(pos) == type(None):
-            raise Exception("address resolution requires 'latitude' and 'longitude' fields")
+            error("address resolution requires 'latitude' and 'longitude' fields",Exception)
         for retries in range(config["retries"]):
             try:
                 addr = reverse_geocode(pos,
@@ -158,52 +221,19 @@ def apply(data, options=default_options, config=default_config, warning=print):
             import time
             time.sleep(config["sleep"])
         if type(addr) is Exception:
-            raise addr
+            error(f"geocoder error ({addr})",Exception)
         data["address"] = pd.Series(addr["address"],dtype="string").tolist()
         return data
 
-try:
-
-    DATA = None
-    CONFIG = default_config
-    OPTIONS = default_options
-    OPENFIDO_INPUT = os.getenv("OPENFIDO_INPUT")
-    OPENFIDO_OUTPUT = os.getenv("OPENFIDO_OUTPUT")
-    warnings = []
-    with open(f"{OPENFIDO_INPUT}/config.csv","r") as cfg:
-        reader = csv.reader(cfg)
-        def cast(x,astype):
-            if astype is bool:
-                try:
-                    return int(x)
-                except:
-                    if x.lower() in ("yes","true","no","false"):
-                        return x.lower() in ("yes","true")
-                    raise
-            else:
-                return astype(x)
-        for row in reader:
-            row0 = row[0].lower()
-            if row0 == "data":
-                DATA = pd.read_csv(f"{OPENFIDO_INPUT}/{row[1]}")
-            elif row0 in CONFIG.keys():
-                print("CONFIG",CONFIG)
-                if len(row) == 1:
-                    CONFIG[row0] = True
-                else:
-                    CONFIG[row0] = cast(row[1],type(CONFIG[row0]))
-            elif row0 in OPTIONS.keys():
-                if len(row) == 1:
-                    OPTIONS[row0] = True
-                else:   
-                    OPTIONS[row0] = cast(row[1],type(CONFIG[row0]))
-            else:
-                print(f"WARNING [address]: config.csv parameter {row[0]} is not valid",file=sys.stderr)
-        result = apply(DATA,OPTIONS,CONFIG,warning=lambda x: warnings.append(x))
+if __name__ == "__main__":
+    try:
+        DATA = None
+        load_config()
+        result = apply(DATA)
         result.to_csv(f"{OPENFIDO_OUTPUT}/address.csv")
-    exit(0)
+        exit(0)
 
-except Exception as err:
+    except Exception as err:
 
-    print(f"ERROR [address]: address resolution failed",file=sys.stderr)
-    raise
+        print(f"ERROR [address]: address resolution failed",file=sys.stderr)
+        raise

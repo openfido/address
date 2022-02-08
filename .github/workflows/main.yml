@@ -10,7 +10,7 @@ on:
 
 jobs:
   build:
-    runs-on: debian:11
+    runs-on: debian-latest
     steps:
       - uses: actions/checkout@v2
       - name: validate

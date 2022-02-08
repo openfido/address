@@ -13,7 +13,7 @@ for OPENFIDO_INPUT in $(find $PWD/autotest -name 'input_*' -print); do
     rm -rf $OPENFIDO_OUTPUT/{*,.??*}
     if ! python3 openfido.py 1>$OPENFIDO_OUTPUT/openfido.out 2>$OPENFIDO_OUTPUT/openfido.err; then
         FAILED=$(($FAILED+1)) 
-        FILES="$FILES ${OPENFIDO_INPUT/$PWD\//}"
+        FILES="$FILES ${OPENFIDO_OUTPUT/$PWD\//}"
         echo "ERROR: $OPENFIDO_INPUT test failed"
     fi
     TESTED=$(($TESTED+1))

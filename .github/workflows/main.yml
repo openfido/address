@@ -1,24 +1,17 @@
 name: autotest
 
 on:
-
   push:
     branches: [ main ]
-
   pull_request:
     branches: [ main ]
     
   workflow_dispatch:
 
 jobs:
-
-  autotest:
-
+  build:
     runs-on: debian:11
-
     steps:
-    
       - uses: actions/checkout@v2
-
       - name: validate
         run: sh autotest.sh

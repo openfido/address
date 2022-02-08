@@ -2,6 +2,7 @@
 #
 # Generic python environment for OpenFIDO
 #
+set -x
 
 TESTED=0
 FAILED=0

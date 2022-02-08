@@ -22,7 +22,7 @@ done
 echo "Tests completed"
 echo "$TESTED tests completed"
 echo "$FAILED tests failed"
-if $FAILED -gt 0; then
+if [ $FAILED -gt 0 ]; then
     tar cfz validate-result.tar.gz $FILES
 fi
 time

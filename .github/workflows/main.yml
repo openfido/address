@@ -19,5 +19,5 @@ jobs:
         uses: actions/upload-artifact@v2
         if: failure()
         with:
-          name: validate-result
-          path: validate-results.tar.gz
+          name: autotest-errors
+          path: autotest-errors.tar.gz

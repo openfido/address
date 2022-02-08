@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #
 # Generic python environment for OpenFIDO
 #

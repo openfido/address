@@ -25,8 +25,8 @@ echo "Tests completed"
 echo "$TESTED tests completed"
 echo "$FAILED tests failed"
 if [ $FAILED -gt 0 ]; then
-    tar cfz validate-result.tar.gz $FILES
-    echo "Failure artifacts saved to validate-result.tar.gz"
+    tar cfz autotest-errors.tar.gz $FILES
+    echo "Failure artifacts saved to autotest-errors.tar.gz"
     exit 1
 else
     echo "Success"

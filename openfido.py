@@ -199,9 +199,6 @@ try:
                     OPTIONS[row0] = cast(row[1],type(CONFIG[row0]))
             else:
                 print(f"WARNING [address]: config.csv parameter {row[0]} is not valid",file=sys.stderr)
-        print("DATA",DATA,file=sys.stderr)
-        print("OPTIONS",OPTIONS,file=sys.stderr)
-        print("CONFIG",CONFIG,file=sys.stderr)
         result = apply(DATA,OPTIONS,CONFIG,warning=lambda x: warnings.append(x))
         result.to_csv(f"{OPENFIDO_OUTPUT}/address.csv")
     exit(0)

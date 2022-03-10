@@ -1,4 +1,4 @@
-[![validation](https://github.com/openfido/address/actions/workflows/main.yml/badge.svg)](https://github.com/openfido/address/actions/workflows/main.yml)
+Pipeline status: [![validation](https://github.com/openfido/address/actions/workflows/main.yml/badge.svg)](https://github.com/openfido/address/actions/workflows/main.yml)
 
 The address resolution pipeline resolves addresses and locations.
 

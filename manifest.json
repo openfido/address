@@ -1,0 +1,7 @@
+{
+  "description" : "Address resolution pipeline",
+  "docker" : "debian:11",
+  "git" : "https://github.com/openfido/address.git",
+  "branch" : "main",
+  "script" : "openfido.sh"
+}
